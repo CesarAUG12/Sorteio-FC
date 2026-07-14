@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIFA/Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon"
+        href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPP6gPesWJxlbQEfN2ydtwfAoJQZphxttr5z0VVtAuCg&s=10"
+        type="image/x-icon">
+
+</head>
+
+<body class="page-game">
+    <div class="page-hero game">
+        <a href="index.html" class="hero-back" aria-label="Voltar"><i class="fa-solid fa-arrow-left"></i></a>
+        <div class="icon-circle"><i class="fa-solid fa-gamepad"></i></div>
+        <h2>FIFA / Game</h2>
+        <p class="subtitle">Sorteie qual time cada jogador vai controlar.</p>
+    </div>
+
+    <div class="container page-game">
+        <h3>Jogadores <span class="count-tag" id="fifaPlayerCount">0 jogadores</span></h3>
+        <div class="input-row">
+            <input type="text" id="fifaPlayerInput" placeholder="Nome do jogador" required
+                onkeydown="if(event.key==='Enter'){ event.preventDefault(); addFifaPlayer(); }">
+            <button class="btn-add" onclick="addFifaPlayer()"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        <ul id="fifaPlayerList"></ul>
+
+        <h3>Times disponíveis <span class="count-tag" id="teamCount">0 times</span></h3>
+        <div class="input-row">
+            <input type="text" id="teamInput" placeholder="Nome do time (ex: Brasil)" required
+                onkeydown="if(event.key==='Enter'){ event.preventDefault(); addTeam(); }">
+            <button class="btn-add" onclick="addTeam()"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        <ul id="teamList"></ul>
+
+        <div class="error-msg" id="gameError"></div>
+
+        <button class="btn-primary" id="sortearBtn" onclick="sortearFifa()"><i
+                class="fa-solid fa-shuffle"></i>Sortear</button>
+        <div class="result" id="resultFifa"></div>
+
+        <footer class="credits">
+            <i class="fa-solid fa-futbol"></i>
+            Apito inicial / feito por <a href="https://cesar-portfolio-dev.netlify.app/">Cesar <i
+                    class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </footer>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let fifaPlayers = [];
+        let teams = [];
+
+        function addFifaPlayer() {
+            const input = document.getElementById('fifaPlayerInput');
+            const value = input.value.trim();
+            if (value !== "") {
+                fifaPlayers.push(value);
+                renderFifaPlayers();
+                input.value = "";
+                input.focus();
+            }
+        }
+
+        function removeFifaPlayer(index) {
+            fifaPlayers.splice(index, 1);
+            renderFifaPlayers();
+        }
+
+        function addTeam() {
+            const input = document.getElementById('teamInput');
+            const value = input.value.trim();
+            if (value !== "") {
+                teams.push(value);
+                renderTeams();
+                input.value = "";
+                input.focus();
+            }
+        }
+
+        function removeTeam(index) {
+            teams.splice(index, 1);
+            renderTeams();
+        }
+
+        function renderFifaPlayers() {
+            const ul = document.getElementById('fifaPlayerList');
+            document.getElementById('fifaPlayerCount').textContent =
+                `${fifaPlayers.length} jogador${fifaPlayers.length === 1 ? '' : 'es'}`;
+
+            if (fifaPlayers.length === 0) {
+                ul.innerHTML = `<li class="empty">Nenhum jogador ainda. Chama a galera pro controle 🎮</li>`;
+                return;
+            }
+            ul.innerHTML = fifaPlayers.map((p, i) => `
+                <li>
+                    <span class="badge">${i + 1}</span>
+                    <span class="name">${p}</span>
+                    <button class="remove" onclick="removeFifaPlayer(${i})" aria-label="Remover ${p}"><i class="fa-solid fa-xmark"></i></button>
+                </li>
+            `).join("");
+        }
+
+        function renderTeams() {
+            const ul = document.getElementById('teamList');
+            document.getElementById('teamCount').textContent =
+                `${teams.length} time${teams.length === 1 ? '' : 's'}`;
+
+            if (teams.length === 0) {
+                ul.innerHTML = `<li class="empty">Nenhum time ainda. Adicione as seleções ou clubes acima</li>`;
+                return;
+            }
+            ul.innerHTML = teams.map((t, i) => `
+                <li>
+                    <span class="badge" style="background:${teamColor(i)}"><i class="fa-solid fa-flag"></i></span>
+                    <span class="name">${t}</span>
+                    <button class="remove" onclick="removeTeam(${i})" aria-label="Remover ${t}"><i class="fa-solid fa-xmark"></i></button>
+                </li>
+            `).join("");
+        }
+
+        function sortearFifa() {
+            const errorEl = document.getElementById('gameError');
+            hideError(errorEl);
+
+            if (fifaPlayers.length === 0) {
+                showError(errorEl, "Adicione pelo menos um jogador!");
+                return;
+            }
+            if (teams.length === 0) {
+                showError(errorEl, "Adicione pelo menos um time!");
+                return;
+            }
+
+            const btn = document.getElementById('sortearBtn');
+            btn.classList.add('shuffling');
+            setTimeout(() => {
+                btn.classList.remove('shuffling');
+                revelarFifa();
+            }, 320);
+        }
+
+        function revelarFifa() {
+            const shuffledPlayers = shuffleArray(fifaPlayers);
+            const shuffledTeams = shuffleArray(teams);
+
+            const groups = shuffledTeams.map(t => ({ team: t, players: [] }));
+            shuffledPlayers.forEach((p, i) => {
+                groups[i % groups.length].players.push(p);
+            });
+
+            let resultHTML = "";
+            groups.forEach((g, i) => {
+                const side = i % 2 === 0 ? 'from-left' : 'from-right';
+                resultHTML += `
+                    <div class="team-card ${side}" style="border-left-color:${teamColor(i)}; animation-delay:${i * 90}ms">
+                        <div class="team-head">
+                            <h4>${g.team}</h4>
+                            <span>${g.players.length} jogador${g.players.length === 1 ? '' : 'es'}</span>
+                        </div>
+                        <div class="chip-row">
+                            ${g.players.length
+                        ? g.players.map(p => `<span class="chip">${p}</span>`).join("")
+                        : `<span class="empty-note">Aguardando jogador no próximo sorteio</span>`}
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('resultFifa').innerHTML = resultHTML;
+        }
+
+        renderFifaPlayers();
+        renderTeams();
+    </script>
+</body>
+
+</html>

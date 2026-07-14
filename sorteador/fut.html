@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futebol Real</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon"
+        href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPP6gPesWJxlbQEfN2ydtwfAoJQZphxttr5z0VVtAuCg&s=10"
+        type="image/x-icon">
+
+</head>
+
+<body class="page-fut">
+    <div class="page-hero fut">
+        <a href="index.html" class="hero-back" aria-label="Voltar"><i class="fa-solid fa-arrow-left"></i></a>
+        <div class="icon-circle"><i class="fa-solid fa-people-group"></i></div>
+        <h2>Vem pro fut</h2>
+        <p class="subtitle">Monte a lista de craques e escolha como dividir os times.</p>
+    </div>
+
+    <div class="container page-fut">
+        <h3>Jogadores <span class="count-tag" id="playerCount">0 jogadores</span></h3>
+        <div class="input-row">
+            <input type="text" id="playerInput" placeholder="Nome do jogador" required
+                onkeydown="if(event.key==='Enter'){ event.preventDefault(); addPlayer(); }">
+            <button class="btn-add" onclick="addPlayer()"><i class="fa-solid fa-plus"></i></button>
+        </div>
+        <ul id="playerList"></ul>
+
+        <h3>Configuração do sorteio</h3>
+        <div class="field-group">
+            <div class="segmented" id="modoSegmented">
+                <div class="segmented-indicator" id="modoIndicator"></div>
+                <label class="segmented-option active" data-value="equipes">
+                    <input type="radio" name="modo" value="equipes" checked>
+                    Por nº de times
+                </label>
+                <label class="segmented-option" data-value="jogadores">
+                    <input type="radio" name="modo" value="jogadores">
+                    Por jogadores/time
+                </label>
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field-group half">
+                <label class="field-label" for="numTimes">Número de times</label>
+                <input type="number" id="numTimes" min="2" value="2">
+            </div>
+            <div class="field-group half">
+                <label class="field-label" for="numJogadores">Jogadores por time</label>
+                <input type="number" id="numJogadores" min="1" value="5" disabled>
+            </div>
+        </div>
+
+        <div class="error-msg" id="futError"></div>
+
+        <button class="btn-primary" id="sortearBtn" onclick="sortearTimes()"><i class="fa-solid fa-shuffle"></i>Sortear
+            Times</button>
+        <div class="result" id="resultReal"></div>
+
+        <footer class="credits">
+            <i class="fa-solid fa-futbol"></i>
+            Apito inicial / feito por <a href="https://cesar-portfolio-dev.netlify.app/">Cesar <i
+                    class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </footer>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let players = [];
+
+        function addPlayer() {
+            const input = document.getElementById('playerInput');
+            const value = input.value.trim();
+            if (value !== "") {
+                players.push(value);
+                renderPlayers();
+                input.value = "";
+                input.focus();
+            }
+        }
+
+        function removePlayer(index) {
+            players.splice(index, 1);
+            renderPlayers();
+        }
+
+        function renderPlayers() {
+            const ul = document.getElementById('playerList');
+            document.getElementById('playerCount').textContent =
+                `${players.length} jogador${players.length === 1 ? '' : 'es'}`;
+
+            if (players.length === 0) {
+                ul.innerHTML = `<li class="empty">Nenhum jogador ainda. Adicione o primeiro craque acima ⚽</li>`;
+                return;
+            }
+            ul.innerHTML = players.map((p, i) => `
+                <li>
+                    <span class="badge">${i + 1}</span>
+                    <span class="name">${p}</span>
+                    <button class="remove" onclick="removePlayer(${i})" aria-label="Remover ${p}"><i class="fa-solid fa-xmark"></i></button>
+                </li>
+            `).join("");
+        }
+
+        // Alterna qual campo numérico fica ativo conforme o modo escolhido
+        document.querySelectorAll('#modoSegmented .segmented-option').forEach((opt, idx) => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('#modoSegmented .segmented-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                opt.querySelector('input').checked = true;
+                document.getElementById('modoIndicator').classList.toggle('shifted', idx === 1);
+                const isEquipes = opt.dataset.value === 'equipes';
+                document.getElementById('numTimes').disabled = !isEquipes;
+                document.getElementById('numJogadores').disabled = isEquipes;
+            });
+        });
+
+        function sortearTimes() {
+            const errorEl = document.getElementById('futError');
+            hideError(errorEl);
+
+            if (players.length === 0) {
+                showError(errorEl, "Adicione jogadores antes de sortear!");
+                return;
+            }
+
+            const btn = document.getElementById('sortearBtn');
+            btn.classList.add('shuffling');
+            setTimeout(() => {
+                btn.classList.remove('shuffling');
+                revelarTimes();
+            }, 320);
+        }
+
+        function revelarTimes() {
+            const errorEl = document.getElementById('futError');
+            const shuffled = shuffleArray(players);
+            const modo = document.querySelector('input[name="modo"]:checked').value;
+            let times = [];
+
+            if (modo === "equipes") {
+                const numTimes = parseInt(document.getElementById('numTimes').value);
+                if (!numTimes || numTimes < 2) {
+                    showError(errorEl, "Escolha pelo menos 2 equipes!");
+                    return;
+                }
+                times = Array.from({ length: numTimes }, () => []);
+                shuffled.forEach((player, index) => {
+                    times[index % numTimes].push(player);
+                });
+            } else {
+                const numJogadores = parseInt(document.getElementById('numJogadores').value);
+                if (!numJogadores || numJogadores < 1) {
+                    showError(errorEl, "Número de jogadores por equipe inválido!");
+                    return;
+                }
+                const numTimes = Math.ceil(shuffled.length / numJogadores);
+                times = Array.from({ length: numTimes }, () => []);
+                shuffled.forEach((player, index) => {
+                    times[Math.floor(index / numJogadores)].push(player);
+                });
+            }
+
+            let resultHTML = "";
+            times.forEach((time, i) => {
+                const side = i % 2 === 0 ? 'from-left' : 'from-right';
+                resultHTML += `
+                    <div class="team-card ${side}" style="border-left-color:${teamColor(i)}; animation-delay:${i * 90}ms">
+                        <div class="team-head">
+                            <h4>Time ${i + 1}</h4>
+                            <span>${time.length} jogador${time.length === 1 ? '' : 'es'}</span>
+                        </div>
+                        <div class="chip-row">
+                            ${time.map(p => `<span class="chip">${p}</span>`).join("")}
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('resultReal').innerHTML = resultHTML;
+        }
+
+        renderPlayers();
+    </script>
+</body>
+
+</html>
